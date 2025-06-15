@@ -1,0 +1,24 @@
+# Common Backyard Birds - North America
+# This file contains a list of common backyard bird species
+# Use with: macaulay-lookup search --species-file common_backyard_birds.txt
+
+American Robin
+Northern Cardinal
+Blue Jay
+American Crow
+House Sparrow
+Mourning Dove
+Rock Pigeon
+European Starling
+American Goldfinch
+House Finch
+Downy Woodpecker
+Red-winged Blackbird
+Northern Mockingbird
+Song Sparrow
+White-breasted Nuthatch
+Carolina Wren
+Tufted Titmouse
+Black-capped Chickadee
+Dark-eyed Junco
+Cedar Waxwing
