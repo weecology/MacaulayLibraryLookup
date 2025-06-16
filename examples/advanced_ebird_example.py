@@ -66,16 +66,15 @@ def get_media_for_species(species_list: List[Dict], output_file: str):
         for species in species_list:
             try:
                 # Get media for species
-                results = lookup.search_species(species['species_code'])
+                results = lookup.search_species(taxon_code=species['species_code'])
                 
                 if results:
                     # Extract media URLs and catalog IDs
-                    media_info = []
+                    catalog_ids = []
                     for result in results:
-                        if 'media_url' in result and 'catalog_id' in result:
-                            media_info.append({
+                        if 'catalog_id' in result:
+                            catalog_ids.append({
                                 'catalog_id': result['catalog_id'],
-                                'media_url': result['media_url']
                             })
                     
                     # Write to CSV
@@ -87,11 +86,10 @@ def get_media_for_species(species_list: List[Dict], output_file: str):
                         'date': species['date'],
                         'latitude': species['latitude'],
                         'longitude': species['longitude'],
-                        'catalog_id': ';'.join(info['catalog_id'] for info in media_info),
-                        'media_urls': ';'.join(info['media_url'] for info in media_info)
+                        'catalog_id': catalog_ids
                     })
                     
-                    print(f"Processed {species['species_code']}: Found {len(media_info)} media items")
+                    print(f"Processed {species['species_code']}: Found {len(catalog_ids)} media items")
                 else:
                     # Write species info even if no media found
                     writer.writerow({
@@ -103,7 +101,6 @@ def get_media_for_species(species_list: List[Dict], output_file: str):
                         'latitude': species['latitude'],
                         'longitude': species['longitude'],
                         'catalog_id': '',
-                        'media_urls': ''
                     })
                     print(f"No media found for {species['species_code']}")
                     
