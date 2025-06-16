@@ -222,3 +222,27 @@ If you encounter any issues or have feature requests, please [open an issue](htt
 ## 📈 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
+
+## Advanced eBird API Example
+
+The `examples/advanced_ebird_example.py` script demonstrates how to:
+1. Query the eBird API for species at a specific hotspot (Cajas National Park)
+2. Get media for each species using the Macaulay Library API
+3. Save detailed results to CSV including:
+   - Species information (code, common name, scientific name)
+   - Observation details (location, date, coordinates)
+   - Media catalog IDs
+
+Example output showing species observations and media records:
+
+![Example CSV Output](www/example_output.png)
+
+The script successfully retrieves media for many species:
+
+![Media Results](www/media_results.png)
+
+To run the example:
+```bash
+export EBIRD_API_KEY='your-api-key-here'
+python examples/advanced_ebird_example.py
+```

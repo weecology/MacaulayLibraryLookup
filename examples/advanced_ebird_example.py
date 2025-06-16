@@ -56,7 +56,7 @@ def get_media_for_species(species_list: List[Dict], output_file: str):
     # Prepare CSV headers
     headers = ['species_code', 'common_name', 'scientific_name', 
               'location', 'date', 'latitude', 'longitude',
-              'catalog_id', 'media_urls']
+              'catalog_id']
     
     with open(output_file, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=headers)
@@ -77,17 +77,18 @@ def get_media_for_species(species_list: List[Dict], output_file: str):
                                 'catalog_id': result['catalog_id'],
                             })
                     
-                    # Write to CSV
-                    writer.writerow({
-                        'species_code': species['species_code'],
-                        'common_name': species['common_name'],
-                        'scientific_name': species['scientific_name'],
-                        'location': species['location'],
-                        'date': species['date'],
-                        'latitude': species['latitude'],
-                        'longitude': species['longitude'],
-                        'catalog_id': catalog_ids
-                    })
+                    # Write a row for each catalog ID
+                    for catalog_info in catalog_ids:
+                        writer.writerow({
+                            'species_code': species['species_code'],
+                            'common_name': species['common_name'],
+                            'scientific_name': species['scientific_name'],
+                            'location': species['location'],
+                            'date': species['date'],
+                            'latitude': species['latitude'],
+                            'longitude': species['longitude'],
+                            'catalog_id': catalog_info['catalog_id']
+                        })
                     
                     print(f"Processed {species['species_code']}: Found {len(catalog_ids)} media items")
                 else:
@@ -100,7 +101,7 @@ def get_media_for_species(species_list: List[Dict], output_file: str):
                         'date': species['date'],
                         'latitude': species['latitude'],
                         'longitude': species['longitude'],
-                        'catalog_id': '',
+                        'catalog_id': ''
                     })
                     print(f"No media found for {species['species_code']}")
                     
