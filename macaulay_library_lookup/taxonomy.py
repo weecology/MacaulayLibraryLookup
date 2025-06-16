@@ -1,13 +1,10 @@
 """eBird taxonomy handling for species name resolution."""
 
-import csv
 import logging
 import os
 from typing import Dict, List, Optional
-from urllib.parse import urlparse
 
 import pandas as pd
-import requests
 
 logger = logging.getLogger(__name__)
 
@@ -20,74 +17,29 @@ class eBirdTaxonomy:
         Initialize eBird taxonomy handler.
         
         Args:
-            taxonomy_file: Path to local taxonomy CSV file
+            taxonomy_file: Path to local taxonomy file (Excel or CSV)
         """
-        self.taxonomy_url = (
-            "https://www.birds.cornell.edu/clementschecklist/wp-content/uploads/"
-            "2024/10/eBird_Taxonomy_v2024.csv"
-        )
-        self.taxonomy_file = taxonomy_file or "ebird_taxonomy.csv"
+        # Default to Excel file in data directory
+        self.taxonomy_file = taxonomy_file or "data/eBird_taxonomy_v2024.xlsx"
         self.taxonomy_data = None
         self._load_taxonomy()
     
     def _load_taxonomy(self) -> None:
-        """Load taxonomy data from file or download if needed."""
+        """Load taxonomy data from file."""
         try:
-            if os.path.exists(self.taxonomy_file):
-                logger.info(f"Loading taxonomy from {self.taxonomy_file}")
-                self.taxonomy_data = pd.read_csv(self.taxonomy_file)
+            if not os.path.exists(self.taxonomy_file):
+                raise FileNotFoundError(f"Taxonomy file not found: {self.taxonomy_file}")
+                
+            logger.info(f"Loading taxonomy from {self.taxonomy_file}")
+            # Handle both Excel and CSV files
+            if self.taxonomy_file.endswith('.xlsx'):
+                self.taxonomy_data = pd.read_excel(self.taxonomy_file)
             else:
-                logger.info("Downloading eBird taxonomy...")
-                self._download_taxonomy()
+                self.taxonomy_data = pd.read_csv(self.taxonomy_file)
                 
         except Exception as e:
             logger.error(f"Error loading taxonomy: {e}")
-            # Create minimal fallback taxonomy
-            self._create_fallback_taxonomy()
-    
-    def _download_taxonomy(self) -> None:
-        """Download taxonomy file from eBird."""
-        try:
-            response = requests.get(self.taxonomy_url, timeout=60)
-            response.raise_for_status()
-            
-            with open(self.taxonomy_file, 'wb') as f:
-                f.write(response.content)
-                
-            self.taxonomy_data = pd.read_csv(self.taxonomy_file)
-            logger.info(f"Downloaded taxonomy with {len(self.taxonomy_data)} records")
-            
-        except Exception as e:
-            logger.error(f"Error downloading taxonomy: {e}")
-            self._create_fallback_taxonomy()
-    
-    def _create_fallback_taxonomy(self) -> None:
-        """Create a minimal fallback taxonomy with common species."""
-        fallback_data = [
-            {"SPECIES_CODE": "amerob", "PRIMARY_COM_NAME": "American Robin", 
-             "SCI_NAME": "Turdus migratorius"},
-            {"SPECIES_CODE": "norcar", "PRIMARY_COM_NAME": "Northern Cardinal", 
-             "SCI_NAME": "Cardinalis cardinalis"},
-            {"SPECIES_CODE": "blujay", "PRIMARY_COM_NAME": "Blue Jay", 
-             "SCI_NAME": "Cyanocitta cristata"},
-            {"SPECIES_CODE": "rewbla", "PRIMARY_COM_NAME": "Red-winged Blackbird", 
-             "SCI_NAME": "Agelaius phoeniceus"},
-            {"SPECIES_CODE": "houspa", "PRIMARY_COM_NAME": "House Sparrow", 
-             "SCI_NAME": "Passer domesticus"},
-            {"SPECIES_CODE": "amecro", "PRIMARY_COM_NAME": "American Crow", 
-             "SCI_NAME": "Corvus brachyrhynchos"},
-            {"SPECIES_CODE": "norcmo", "PRIMARY_COM_NAME": "Northern Mockingbird", 
-             "SCI_NAME": "Mimus polyglottos"},
-            {"SPECIES_CODE": "mallar3", "PRIMARY_COM_NAME": "Mallard", 
-             "SCI_NAME": "Anas platyrhynchos"},
-            {"SPECIES_CODE": "rocpig", "PRIMARY_COM_NAME": "Rock Pigeon", 
-             "SCI_NAME": "Columba livia"},
-            {"SPECIES_CODE": "mourdo", "PRIMARY_COM_NAME": "Mourning Dove", 
-             "SCI_NAME": "Zenaida macroura"}
-        ]
-        
-        self.taxonomy_data = pd.DataFrame(fallback_data)
-        logger.warning("Using fallback taxonomy with limited species")
+            raise
     
     def get_taxon_code_by_common_name(self, common_name: str) -> Optional[str]:
         """
