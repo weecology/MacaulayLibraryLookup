@@ -54,6 +54,60 @@ class TestMacaulayLookup:
         
         assert results == []
         
+    @patch('macaulay_library_lookup.core.requests.Session.get')
+    @patch('time.sleep')  # Mock sleep to speed up tests
+    def test_fetch_media_data_pagination(self, mock_sleep, mock_get):
+        """Test media data fetching with pagination."""
+        # Mock responses for multiple pages
+        def side_effect(*args, **kwargs):
+            url = args[0] if args else kwargs.get('url', '')
+            mock_response = Mock()
+            mock_response.raise_for_status.return_value = None
+            
+            # First page - return full page of results (50 items to trigger pagination)
+            if 'offset=0' in url or 'page=1' in url or ('offset' not in url and 'page' not in url):
+                # Generate 50 asset links to simulate a full page
+                asset_links = '\n'.join([f'<a href="/asset/{123000 + i}">Test {i}</a>' for i in range(50)])
+                mock_response.content = f'''<html><body>
+                    {asset_links}
+                    <div class="pagination"><a>Next</a></div>
+                </body></html>'''.encode()
+            # Second page - return some results  
+            elif 'offset=50' in url or 'page=2' in url:
+                mock_response.content = b'''<html><body>
+                    <a href="/asset/345678">Test 3</a>
+                    <a href="/asset/456789">Test 4</a>
+                </body></html>'''
+            # Third page - no results (end of pagination)
+            else:
+                mock_response.content = b'<html><body></body></html>'
+            
+            return mock_response
+        
+        mock_get.side_effect = side_effect
+        
+        params = {'taxonCode': 'amerob', 'mediaType': 'audio'}
+        results = self.ml._fetch_media_data(params, 100)
+        
+        # Should have made multiple requests for pagination
+        assert mock_get.call_count >= 2
+        assert isinstance(results, list)
+        
+    @patch('macaulay_library_lookup.core.requests.Session.get')
+    def test_fetch_media_data_single_page(self, mock_get):
+        """Test media data fetching that stops after first page due to no more results."""
+        mock_response = Mock()
+        mock_response.content = b'<html><body><a href="/asset/123456">Test</a></body></html>'
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+        
+        params = {'taxonCode': 'amerob', 'mediaType': 'audio'}  
+        results = self.ml._fetch_media_data(params, 5)  # Small max_results
+        
+        # Should only make one request since we get fewer results than expected
+        assert mock_get.call_count == 1
+        assert isinstance(results, list)
+        
     def test_search_species_no_taxon_code(self):
         """Test species search without valid taxon code."""
         with patch.object(self.ml.taxonomy, 'get_taxon_code_by_common_name', return_value=None):
