@@ -9,8 +9,16 @@ This tool helps researchers and bird enthusiasts automate the process of finding
 1. Taking species lists as input (manual list or from eBird API)
 2. Looking up species in the eBird taxonomy
 3. Searching the Macaulay Library using customizable filters
-4. Extracting catalog IDs and metadata
+4. Extracting catalog IDs and metadata from **multiple pages** of results (pagination support)
 5. Exporting results to CSV format
+
+### 🔄 Pagination Support
+
+The tool automatically handles pagination to retrieve **all available results** beyond the first page:
+- Fetches multiple pages of results until the requested `max_results` is reached
+- Intelligently detects when no more results are available
+- Includes rate limiting between page requests to be respectful to servers
+- Supports multiple pagination parameter patterns used by the Macaulay Library
 
 ## 🔧 Installation
 
