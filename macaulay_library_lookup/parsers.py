@@ -328,3 +328,67 @@ class MacaulayParser:
         """
         matches = self.media_url_pattern.findall(url)
         return matches
+
+    def detect_pagination_info(self, soup: BeautifulSoup) -> Dict:
+        """
+        Detect pagination information from a catalog page.
+        
+        Args:
+            soup: BeautifulSoup object of the page
+            
+        Returns:
+            Dictionary with pagination information
+        """
+        pagination_info = {
+            'has_next_page': False,
+            'total_results': None,
+            'current_page': None,
+            'total_pages': None,
+            'results_per_page': None
+        }
+        
+        # Look for common pagination indicators
+        pagination_patterns = [
+            # Common pagination class names
+            {'class': re.compile(r'pagination', re.I)},
+            {'class': re.compile(r'pager', re.I)},
+            {'class': re.compile(r'page-nav', re.I)},
+            # Common pagination element types
+            {'role': 'navigation'},
+            {'aria-label': re.compile(r'pagination', re.I)}
+        ]
+        
+        for pattern in pagination_patterns:
+            pagination_elem = soup.find(attrs=pattern)
+            if pagination_elem:
+                # Look for "next" links or buttons
+                next_indicators = pagination_elem.find_all(['a', 'button'], 
+                    string=re.compile(r'next|more|\>', re.I))
+                if next_indicators:
+                    pagination_info['has_next_page'] = True
+                
+                # Look for page numbers
+                page_links = pagination_elem.find_all('a', string=re.compile(r'^\d+$'))
+                if page_links:
+                    page_numbers = [int(link.get_text()) for link in page_links]
+                    pagination_info['total_pages'] = max(page_numbers) if page_numbers else None
+                
+                break
+        
+        # Look for result count indicators
+        result_count_patterns = [
+            r'(\d+)\s*(?:of\s*(\d+))?\s*results?',
+            r'showing\s*(\d+)\s*(?:of\s*(\d+))?\s*results?',
+            r'(\d+)\s*-\s*(\d+)\s*of\s*(\d+)\s*results?'
+        ]
+        
+        page_text = soup.get_text()
+        for pattern in result_count_patterns:
+            match = re.search(pattern, page_text, re.I)
+            if match:
+                groups = match.groups()
+                if len(groups) >= 2 and groups[1]:
+                    pagination_info['total_results'] = int(groups[1])
+                break
+        
+        return pagination_info

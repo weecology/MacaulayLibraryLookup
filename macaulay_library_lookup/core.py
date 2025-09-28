@@ -216,7 +216,7 @@ class MacaulayLookup:
     
     def _fetch_media_data(self, params: Dict, max_results: int) -> List[Dict]:
         """
-        Fetch media data from Macaulay Library.
+        Fetch media data from Macaulay Library with pagination support.
         
         Args:
             params: Search parameters
@@ -225,22 +225,76 @@ class MacaulayLookup:
         Returns:
             List of media records
         """
-        url = f"{self.base_url}?{urlencode(params)}"
-        logger.info(f"Fetching: {url}")
+        all_records = []
+        page = 1
+        results_per_page = 50  # Typical page size for catalog sites
         
-        try:
-            response = self.session.get(url, timeout=30)
-            response.raise_for_status()
+        while len(all_records) < max_results:
+            # Create params for this page
+            page_params = params.copy()
             
-            soup = BeautifulSoup(response.content, 'lxml')
-            media_records = self.parser.parse_catalog_page(soup, params)
+            # Try different pagination parameter patterns commonly used
+            # Pattern 1: offset-based (most common)
+            offset = (page - 1) * results_per_page
+            page_params['offset'] = offset
             
-            # Limit results
-            return media_records[:max_results]
+            # Pattern 2: page-based (backup)
+            page_params['page'] = page
             
-        except requests.RequestException as e:
-            logger.error(f"Error fetching data: {e}")
-            return []
+            # Pattern 3: start-based (backup)  
+            page_params['start'] = offset + 1
+            
+            url = f"{self.base_url}?{urlencode(page_params)}"
+            logger.info(f"Fetching page {page}: {url}")
+            
+            try:
+                response = self.session.get(url, timeout=30)
+                response.raise_for_status()
+                
+                soup = BeautifulSoup(response.content, 'lxml')
+                media_records = self.parser.parse_catalog_page(soup, params)
+                
+                # If no records found on this page, we've reached the end
+                if not media_records:
+                    logger.info(f"No more results found on page {page}, stopping pagination")
+                    break
+                
+                # Add records from this page
+                all_records.extend(media_records)
+                logger.info(f"Page {page}: Found {len(media_records)} records, total so far: {len(all_records)}")
+                
+                # Check for pagination information to make smarter decisions
+                pagination_info = self.parser.detect_pagination_info(soup)
+                
+                # If we got fewer records than expected, we might be at the last page
+                if len(media_records) < results_per_page:
+                    logger.info(f"Page {page} returned fewer results than expected, likely the last page")
+                    break
+                
+                # If pagination info indicates no next page, stop
+                if not pagination_info.get('has_next_page', True):
+                    logger.info(f"No next page indicator found, stopping pagination")
+                    break
+                
+                page += 1
+                
+                # Rate limiting between pages to be respectful
+                if page > 1:  # Don't sleep after the first page
+                    time.sleep(self.rate_limit)
+                
+                # Safety check to prevent infinite loops
+                if page > 50:  # Reasonable maximum page limit
+                    logger.warning(f"Reached maximum page limit (50), stopping pagination")
+                    break
+                    
+            except requests.RequestException as e:
+                logger.error(f"Error fetching page {page}: {e}")
+                break
+        
+        # Limit results to requested maximum
+        limited_records = all_records[:max_results]
+        logger.info(f"Returning {len(limited_records)} records (requested: {max_results})")
+        return limited_records
     
     def export_to_csv(self, results: List[Dict], filename: str) -> None:
         """
